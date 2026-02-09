@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { createStarfield, updateStarfield } from '../utils/starfield.js';
 import { StatsTracker } from '../utils/stats.js';
+import { GAME_DEFAULTS } from '../drills/drillConfig.js';
 import { Cannon } from '../entities/Cannon.js';
 import { Alien } from '../entities/Alien.js';
 import { Missile } from '../entities/Missile.js';
@@ -27,6 +28,14 @@ export class GameScene extends Phaser.Scene {
         this._aliensSpawned = 0;
         this._drillComplete = false;
         this._paused = false;
+
+        // ─── Anti-cheat state ───
+        /** Map<key, timestampMs> – last accepted press time per key */
+        this._lastKeyTime = new Map();
+        this._keyCooldownMs = this.drill.keyCooldownMs ?? GAME_DEFAULTS.keyCooldownMs;
+        /** Consecutive misses counter (resets on a hit) */
+        this._consecutiveMisses = 0;
+        this._missStreakLifePenalty = this.drill.missStreakLifePenalty ?? GAME_DEFAULTS.missStreakLifePenalty;
         this.stats = new StatsTracker();
         this.stats.totalAliens = this.drill.alienCount;
 
@@ -194,6 +203,14 @@ export class GameScene extends Phaser.Scene {
 
         const key = event.key.toLowerCase();
 
+        // ── Anti-spam: per-key cooldown ──
+        const now = performance.now();
+        const lastTime = this._lastKeyTime.get(key) || 0;
+        if (now - lastTime < this._keyCooldownMs) {
+            return; // silently ignore rapid repeats of the same key
+        }
+        this._lastKeyTime.set(key, now);
+
         // Find the lowest (closest to bottom) alive alien with this letter
         let target = null;
         let maxY = -Infinity;
@@ -206,6 +223,7 @@ export class GameScene extends Phaser.Scene {
 
         if (target) {
             // Hit!
+            this._consecutiveMisses = 0;
             this.cannon.aimAt(target.x, target.y);
             this.cannon.fire();
 
@@ -232,6 +250,27 @@ export class GameScene extends Phaser.Scene {
                 this._comboCount = 0;
                 this._comboMultiplier = 1;
                 this.stats.recordMiss();
+                this._consecutiveMisses++;
+
+                // ── Miss streak penalty: too many misses in a row = lose a life ──
+                if (this._missStreakLifePenalty > 0 &&
+                    this._consecutiveMisses >= this._missStreakLifePenalty) {
+                    this._consecutiveMisses = 0;
+                    this.lives--;
+
+                    if (this.heartIcons[this.lives]) {
+                        this.heartIcons[this.lives].setAlpha(0.2);
+                    }
+                    this.cameras.main.shake(250, 0.01);
+                    this.cameras.main.flash(200, 255, 50, 50, false);
+                    this._playSound('life-lost');
+
+                    if (this.lives <= 0) {
+                        this._endGame(false);
+                        return;
+                    }
+                }
+
                 this._updateHUD();
             }
         }
