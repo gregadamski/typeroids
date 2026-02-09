@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
+import { GAME_DEFAULTS } from '../drills/drillConfig.js';
 
 /**
  * An alien that drifts down the screen with a letter label.
  */
 export class Alien extends Phaser.GameObjects.Container {
-    constructor(scene, x, y, letter, speed) {
+    constructor(scene, x, y, letter, speed, config = {}) {
         super(scene, x, y);
         scene.add.existing(this);
 
@@ -19,9 +20,10 @@ export class Alien extends Phaser.GameObjects.Container {
         this.add(this.sprite);
 
         // Letter label
+        const fontSize = config.alienLetterFontSize || GAME_DEFAULTS.alienLetterFontSize;
         this.label = scene.add.text(0, 1, letter.toUpperCase(), {
             fontFamily: '"Press Start 2P", "Courier New", monospace',
-            fontSize: '14px',
+            fontSize,
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 3,

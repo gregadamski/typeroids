@@ -177,7 +177,7 @@ export class GameScene extends Phaser.Scene {
         const { start, end } = this.drill.difficulty.alienSpeed;
         const speed = start + (end - start) * progress;
 
-        const alien = new Alien(this, x, y, letter, speed);
+        const alien = new Alien(this, x, y, letter, speed, this.drill);
         this.aliens.push(alien);
         this._aliensSpawned++;
     }

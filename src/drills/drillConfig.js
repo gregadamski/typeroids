@@ -1,6 +1,17 @@
 /**
+ * Global game defaults – tweak visual / gameplay settings here.
+ */
+export const GAME_DEFAULTS = {
+    /** Font size for the letter displayed on each alien (CSS size string). */
+    alienLetterFontSize: '18px',
+};
+
+/**
  * Drill configuration for Typeroids.
  * To add a new drill, simply push a new object to this array.
+ *
+ * Each drill may optionally override GAME_DEFAULTS values, e.g.:
+ *   alienLetterFontSize: '22px'
  *
  * difficulty.spawnInterval: { start, end } in ms – time between spawns,
  *   interpolated linearly from start → end over the drill.
