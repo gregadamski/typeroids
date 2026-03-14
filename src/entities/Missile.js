@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 
 /**
- * A missile that flies from the cannon to a target alien.
+ * A missile that flies from the cannon toward a target alien,
+ * tracking the alien's live position as it moves.
  */
 export class Missile extends Phaser.GameObjects.Container {
     constructor(scene, startX, startY, targetAlien, onHit) {
@@ -10,12 +11,14 @@ export class Missile extends Phaser.GameObjects.Container {
 
         this.targetAlien = targetAlien;
         this.onHit = onHit;
+        this._speed = 900; // px/sec – fast but not instant
+        this._arrived = false;
 
         // Missile sprite
         this.sprite = scene.add.image(0, 0, 'missile').setOrigin(0.5, 1);
         this.add(this.sprite);
 
-        // Aim rotation
+        // Initial aim rotation
         const angle = Phaser.Math.Angle.Between(startX, startY, targetAlien.x, targetAlien.y);
         this.sprite.setRotation(angle + Math.PI / 2);
 
@@ -31,26 +34,50 @@ export class Missile extends Phaser.GameObjects.Container {
         });
 
         this.setDepth(8);
+    }
 
-        // Tween to target
-        const distance = Phaser.Math.Distance.Between(startX, startY, targetAlien.x, targetAlien.y);
-        const duration = Math.max(80, distance * 0.6); // faster for closer aliens
+    /**
+     * Call from scene.update() to move the missile toward the alien each frame.
+     */
+    track(delta) {
+        if (this._arrived) return;
 
-        scene.tweens.add({
-            targets: this,
-            x: targetAlien.x,
-            y: targetAlien.y,
-            duration,
-            ease: 'Power1',
-            onUpdate: () => {
-                this.trail.setPosition(this.x, this.y);
-            },
-            onComplete: () => {
-                this.trail.stop();
-                scene.time.delayedCall(300, () => this.trail.destroy());
-                if (this.onHit) this.onHit();
-                this.destroy();
-            },
-        });
+        const target = this.targetAlien;
+        if (!target || !target.active) {
+            this._impact();
+            return;
+        }
+
+        const dt = delta / 1000;
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const step = this._speed * dt;
+
+        // Update rotation to track moving target
+        const angle = Math.atan2(dy, dx);
+        this.sprite.setRotation(angle + Math.PI / 2);
+
+        if (step >= dist) {
+            // Arrived
+            this.x = target.x;
+            this.y = target.y;
+            this._impact();
+        } else {
+            this.x += (dx / dist) * step;
+            this.y += (dy / dist) * step;
+        }
+
+        this.trail.setPosition(this.x, this.y);
+    }
+
+    _impact() {
+        if (this._arrived) return;
+        this._arrived = true;
+
+        this.trail.stop();
+        this.scene.time.delayedCall(300, () => this.trail.destroy());
+        if (this.onHit) this.onHit();
+        this.destroy();
     }
 }

@@ -5,9 +5,11 @@ import { GAME_DEFAULTS } from '../drills/drillConfig.js';
 import { Cannon } from '../entities/Cannon.js';
 import { Alien } from '../entities/Alien.js';
 import { Missile } from '../entities/Missile.js';
+import { pickAlienWord } from '../utils/wordGenerator.js';
 
 /**
  * Core gameplay scene.
+ * One alien at a time; aliens carry words that must be fully typed.
  */
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -20,7 +22,7 @@ export class GameScene extends Phaser.Scene {
 
     create() {
         // ─── State ───
-        this.aliens = [];
+        this._currentAlien = null;
         this.lives = 3;
         this.score = 0;
         this._comboMultiplier = 1;
@@ -28,14 +30,14 @@ export class GameScene extends Phaser.Scene {
         this._aliensSpawned = 0;
         this._drillComplete = false;
         this._paused = false;
+        this._activeMissile = null;
 
-        // ─── Anti-cheat state ───
-        /** Map<key, timestampMs> – last accepted press time per key */
-        this._lastKeyTime = new Map();
-        this._keyCooldownMs = this.drill.keyCooldownMs ?? GAME_DEFAULTS.keyCooldownMs;
-        /** Consecutive misses counter (resets on a hit) */
-        this._consecutiveMisses = 0;
-        this._missStreakLifePenalty = this.drill.missStreakLifePenalty ?? GAME_DEFAULTS.missStreakLifePenalty;
+        // ─── Word config ───
+        this._wordChance = this.drill.wordChance ?? GAME_DEFAULTS.wordChance;
+        this._wordMinLength = this.drill.wordMinLength ?? GAME_DEFAULTS.wordMinLength;
+        this._wordMaxLength = this.drill.wordMaxLength ?? GAME_DEFAULTS.wordMaxLength;
+        this._spawnDelayMs = this.drill.spawnDelayMs ?? GAME_DEFAULTS.spawnDelayMs;
+
         this.stats = new StatsTracker();
         this.stats.totalAliens = this.drill.alienCount;
 
@@ -48,8 +50,7 @@ export class GameScene extends Phaser.Scene {
         // ─── HUD ───
         this._createHUD();
 
-        // ─── Spawn timer (dynamic) ───
-        this._spawnTimerEvent = null;
+        // ─── Spawn the first alien ───
         this._scheduleNextSpawn();
 
         // ─── Keyboard input ───
@@ -116,7 +117,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         // Progress bar
-        const progress = (this._aliensSpawned) / this.drill.alienCount;
+        const progress = this._aliensSpawned / this.drill.alienCount;
         this.progressBar.width = 780 * progress;
     }
 
@@ -145,40 +146,28 @@ export class GameScene extends Phaser.Scene {
         this.pauseOverlay.setVisible(this._paused);
 
         if (this._paused) {
-            if (this._spawnTimerEvent) this._spawnTimerEvent.paused = true;
             this.tweens.pauseAll();
         } else {
-            if (this._spawnTimerEvent) this._spawnTimerEvent.paused = false;
             this.tweens.resumeAll();
         }
     }
 
-    // ─── Spawning ──────────────────────────────────────────────────
+    // ─── Spawning (one at a time) ─────────────────────────────────
 
-    /** Compute the current spawn interval based on drill progress. */
-    _getCurrentSpawnInterval() {
-        const progress = this._aliensSpawned / this.drill.alienCount;
-        const { start, end } = this.drill.difficulty.spawnInterval;
-        return start + (end - start) * progress;
-    }
-
-    /** Schedule the next alien spawn with a dynamic delay. */
+    /** Schedule the next alien spawn after a short delay. */
     _scheduleNextSpawn() {
         if (this._aliensSpawned >= this.drill.alienCount || this._drillComplete) return;
 
-        const delay = this._getCurrentSpawnInterval();
-        this._spawnTimerEvent = this.time.delayedCall(delay, () => {
-            this._spawnAlien();
-            this._scheduleNextSpawn();
+        this.time.delayedCall(this._spawnDelayMs, () => {
+            if (!this._drillComplete) this._spawnAlien();
         });
     }
 
     _spawnAlien() {
         if (this._drillComplete) return;
 
-        const keys = this.drill.keys;
-        const letter = keys[Phaser.Math.Between(0, keys.length - 1)];
-        const x = Phaser.Math.Between(60, 740);
+        const word = pickAlienWord(this.drill, this._wordChance, this._wordMinLength, this._wordMaxLength);
+        const x = Phaser.Math.Between(80, 720);
         const y = -30;
 
         // Speed ramp from difficulty config
@@ -186,9 +175,9 @@ export class GameScene extends Phaser.Scene {
         const { start, end } = this.drill.difficulty.alienSpeed;
         const speed = start + (end - start) * progress;
 
-        const alien = new Alien(this, x, y, letter, speed, this.drill);
-        this.aliens.push(alien);
+        this._currentAlien = new Alien(this, x, y, word, speed, this.drill);
         this._aliensSpawned++;
+        this._updateHUD();
     }
 
     // ─── Input ─────────────────────────────────────────────────────
@@ -200,79 +189,58 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (this._paused || this._drillComplete) return;
+        if (!this._currentAlien || !this._currentAlien.alive) return;
+        if (this._activeMissile) return; // wait for missile to land
 
         const key = event.key.toLowerCase();
 
-        // ── Anti-spam: per-key cooldown ──
-        const now = performance.now();
-        const lastTime = this._lastKeyTime.get(key) || 0;
-        if (now - lastTime < this._keyCooldownMs) {
-            return; // silently ignore rapid repeats of the same key
-        }
-        this._lastKeyTime.set(key, now);
+        // Ignore modifier keys, function keys, etc.
+        if (key.length > 1) return;
 
-        // Find the lowest (closest to bottom) alive alien with this letter
-        let target = null;
-        let maxY = -Infinity;
-        for (const alien of this.aliens) {
-            if (alien.alive && alien.letter === key && alien.y > maxY) {
-                target = alien;
-                maxY = alien.y;
+        const expected = this._currentAlien.nextChar();
+        if (!expected) return;
+
+        if (key === expected) {
+            // ── Correct key ──
+            this._currentAlien.advanceChar();
+            this.stats.recordKeystroke();
+
+            if (this._currentAlien.isFullyTyped()) {
+                // Word complete → fire missile (alien keeps moving)
+                const alien = this._currentAlien;
+
+                this.cannon.aimAt(alien.x, alien.y);
+                this.cannon.fire();
+                this._playSound('shoot');
+
+                this._activeMissile = new Missile(this, this.cannon.x, this.cannon.y - 30, alien, () => {
+                    this._activeMissile = null;
+                    if (!alien.alive) return;
+                    alien.explode();
+                    this._playSound('explode');
+
+                    // Scoring: 100 points per character × combo multiplier
+                    this._comboCount++;
+                    this._comboMultiplier = Math.min(5, 1 + Math.floor(this._comboCount / 3));
+                    this.score += 100 * alien.word.length * this._comboMultiplier;
+                    this.stats.recordHit(alien.word.length);
+                    this._updateHUD();
+
+                    // Spawn next alien
+                    this._currentAlien = null;
+                    this._checkDrillComplete();
+                    if (!this._drillComplete) {
+                        this._scheduleNextSpawn();
+                    }
+                });
             }
-        }
-
-        if (target) {
-            // Hit!
-            this._consecutiveMisses = 0;
-            this.cannon.aimAt(target.x, target.y);
-            this.cannon.fire();
-
-            // Play shoot sound
-            this._playSound('shoot');
-
-            // Launch missile
-            new Missile(this, this.cannon.x, this.cannon.y - 30, target, () => {
-                if (!target.alive) return;
-                target.explode();
-                this._playSound('explode');
-
-                // Scoring
-                this._comboCount++;
-                this._comboMultiplier = Math.min(5, 1 + Math.floor(this._comboCount / 3));
-                this.score += 100 * this._comboMultiplier;
-                this.stats.recordHit();
-                this._updateHUD();
-                this._checkDrillComplete();
-            });
         } else {
-            // Miss (only if key is in drill keys — don't penalize for unrelated keys)
-            if (this.drill.keys.includes(key)) {
-                this._comboCount = 0;
-                this._comboMultiplier = 1;
-                this.stats.recordMiss();
-                this._consecutiveMisses++;
-
-                // ── Miss streak penalty: too many misses in a row = lose a life ──
-                if (this._missStreakLifePenalty > 0 &&
-                    this._consecutiveMisses >= this._missStreakLifePenalty) {
-                    this._consecutiveMisses = 0;
-                    this.lives--;
-
-                    if (this.heartIcons[this.lives]) {
-                        this.heartIcons[this.lives].setAlpha(0.2);
-                    }
-                    this.cameras.main.shake(250, 0.01);
-                    this.cameras.main.flash(200, 255, 50, 50, false);
-                    this._playSound('life-lost');
-
-                    if (this.lives <= 0) {
-                        this._endGame(false);
-                        return;
-                    }
-                }
-
-                this._updateHUD();
-            }
+            // ── Wrong key ──
+            this._currentAlien.resetProgress();
+            this._comboCount = 0;
+            this._comboMultiplier = 1;
+            this.stats.recordMiss();
+            this._updateHUD();
         }
     }
 
@@ -302,10 +270,25 @@ export class GameScene extends Phaser.Scene {
         this._playSound('life-lost');
         this._updateHUD();
 
+        // Cancel any in-flight missile targeting this alien
+        if (this._activeMissile) {
+            this._activeMissile.trail.stop();
+            this._activeMissile.scene.time.delayedCall(300, () => {
+                if (this._activeMissile && this._activeMissile.trail) this._activeMissile.trail.destroy();
+            });
+            this._activeMissile.destroy();
+            this._activeMissile = null;
+        }
+
         if (this.lives <= 0) {
+            this._currentAlien = null;
             this._endGame(false);
         } else {
+            this._currentAlien = null;
             this._checkDrillComplete();
+            if (!this._drillComplete) {
+                this._scheduleNextSpawn();
+            }
         }
     }
 
@@ -314,12 +297,9 @@ export class GameScene extends Phaser.Scene {
     _checkDrillComplete() {
         if (this._drillComplete) return;
 
-        // All aliens spawned and none alive on screen
-        if (this._aliensSpawned >= this.drill.alienCount) {
-            const aliveCount = this.aliens.filter(a => a.alive).length;
-            if (aliveCount === 0) {
-                this._endGame(true);
-            }
+        // All aliens spawned and no current alien alive
+        if (this._aliensSpawned >= this.drill.alienCount && !this._currentAlien) {
+            this._endGame(true);
         }
     }
 
@@ -328,8 +308,6 @@ export class GameScene extends Phaser.Scene {
         this._drillComplete = true;
         this.stats.stop();
 
-        // Stop spawning
-        if (this._spawnTimerEvent) this._spawnTimerEvent.remove();
         this.input.keyboard.off('keydown', this._onKeyDown, this);
 
         if (completed) {
@@ -391,19 +369,17 @@ export class GameScene extends Phaser.Scene {
 
         updateStarfield(this, delta);
 
-        // Update aliens & check for escapes
-        for (let i = this.aliens.length - 1; i >= 0; i--) {
-            const alien = this.aliens[i];
-            if (!alien.alive) {
-                this.aliens.splice(i, 1);
-                continue;
-            }
-            alien.update(time, delta);
+        // Track missile toward alien
+        if (this._activeMissile) {
+            this._activeMissile.track(delta);
+        }
 
-            // Check if alien escaped past bottom
-            if (alien.y > 620) {
-                this._onAlienEscaped(alien);
-                this.aliens.splice(i, 1);
+        // Update current alien & check for escape
+        if (this._currentAlien && this._currentAlien.alive) {
+            this._currentAlien.update(time, delta);
+
+            if (this._currentAlien.y > 620) {
+                this._onAlienEscaped(this._currentAlien);
             }
         }
     }

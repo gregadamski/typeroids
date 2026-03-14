@@ -5,14 +5,17 @@ export const GAME_DEFAULTS = {
     /** Font size for the letter displayed on each alien (CSS size string). */
     alienLetterFontSize: '18px',
 
-    /** Minimum ms between accepting the same key again (anti-spam). */
-    keyCooldownMs: 100,
+    /** Probability (0–1) that a spawned alien carries a word instead of a single letter. */
+    wordChance: 0.6,
 
-    /**
-     * How many consecutive misses before the player loses a life.
-     * Set to 0 or Infinity to disable.
-     */
-    missStreakLifePenalty: 5,
+    /** Minimum word length for word-aliens. */
+    wordMinLength: 2,
+
+    /** Maximum word length for word-aliens. */
+    wordMaxLength: 5,
+
+    /** Delay (ms) before spawning the next alien after the current one is destroyed/escaped. */
+    spawnDelayMs: 300,
 };
 
 /**
@@ -21,21 +24,19 @@ export const GAME_DEFAULTS = {
  *
  * Each drill may optionally override GAME_DEFAULTS values, e.g.:
  *   alienLetterFontSize: '22px'
+ *   wordChance: 0.8
  *
- * difficulty.spawnInterval: { start, end } in ms – time between spawns,
- *   interpolated linearly from start → end over the drill.
  * difficulty.alienSpeed: { start, end } in px/sec – how fast aliens fall,
- *   interpolated the same way.
+ *   interpolated linearly from start → end over the drill.
  */
 export const DRILLS = [
     {
         id: 'home-row-left',
         name: 'Home Row – Left',
         keys: ['a', 's', 'd', 'f'],
-        alienCount: 80,
+        alienCount: 40,
         difficulty: {
-            spawnInterval: { start: 1100, end: 600 },
-            alienSpeed: { start: 56, end: 80 },
+            alienSpeed: { start: 120, end: 200 },
         },
         starThresholds: { three: 95, two: 80, one: 60 },
     },
@@ -43,10 +44,9 @@ export const DRILLS = [
         id: 'home-row-right',
         name: 'Home Row – Right',
         keys: ['j', 'k', 'l', ';'],
-        alienCount: 80,
+        alienCount: 40,
         difficulty: {
-            spawnInterval: { start: 1100, end: 600 },
-            alienSpeed: { start: 56, end: 80 },
+            alienSpeed: { start: 120, end: 200 },
         },
         starThresholds: { three: 95, two: 80, one: 60 },
     },
@@ -54,10 +54,9 @@ export const DRILLS = [
         id: 'home-row-full',
         name: 'Full Home Row',
         keys: ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';'],
-        alienCount: 120,
+        alienCount: 50,
         difficulty: {
-            spawnInterval: { start: 1000, end: 500 },
-            alienSpeed: { start: 60, end: 96 },
+            alienSpeed: { start: 130, end: 220 },
         },
         starThresholds: { three: 90, two: 75, one: 55 },
     },
@@ -65,10 +64,9 @@ export const DRILLS = [
         id: 'top-row',
         name: 'Top Row',
         keys: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-        alienCount: 240,
+        alienCount: 50,
         difficulty: {
-            spawnInterval: { start: 2000, end: 100 },
-            alienSpeed: { start: 30, end: 60 },
+            alienSpeed: { start: 110, end: 200 },
         },
         starThresholds: { three: 90, two: 75, one: 55 },
     },
@@ -76,10 +74,9 @@ export const DRILLS = [
         id: 'bottom-row',
         name: 'Bottom Row',
         keys: ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
-        alienCount: 100,
+        alienCount: 45,
         difficulty: {
-            spawnInterval: { start: 1000, end: 500 },
-            alienSpeed: { start: 60, end: 96 },
+            alienSpeed: { start: 130, end: 220 },
         },
         starThresholds: { three: 90, two: 75, one: 55 },
     },
@@ -87,10 +84,9 @@ export const DRILLS = [
         id: 'all-letters',
         name: 'All Letters',
         keys: 'abcdefghijklmnopqrstuvwxyz'.split(''),
-        alienCount: 160,
+        alienCount: 60,
         difficulty: {
-            spawnInterval: { start: 900, end: 400 },
-            alienSpeed: { start: 64, end: 110 },
+            alienSpeed: { start: 140, end: 240 },
         },
         starThresholds: { three: 85, two: 70, one: 50 },
     },
@@ -98,10 +94,9 @@ export const DRILLS = [
         id: 'numbers',
         name: 'Numbers',
         keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-        alienCount: 120,
+        alienCount: 45,
         difficulty: {
-            spawnInterval: { start: 1000, end: 500 },
-            alienSpeed: { start: 60, end: 96 },
+            alienSpeed: { start: 130, end: 220 },
         },
         starThresholds: { three: 90, two: 75, one: 55 },
     },
@@ -109,10 +104,9 @@ export const DRILLS = [
         id: 'mixed',
         name: 'Letters & Numbers',
         keys: 'abcdefghijklmnopqrstuvwxyz1234567890'.split(''),
-        alienCount: 200,
+        alienCount: 60,
         difficulty: {
-            spawnInterval: { start: 800, end: 325 },
-            alienSpeed: { start: 68, end: 120 },
+            alienSpeed: { start: 150, end: 260 },
         },
         starThresholds: { three: 80, two: 65, one: 45 },
     },
