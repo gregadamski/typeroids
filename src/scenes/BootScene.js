@@ -9,11 +9,19 @@ export class BootScene extends Phaser.Scene {
         super({ key: 'BootScene' });
     }
 
+    preload() {
+        this.load.image('cannon', 'spaceship.png');
+        this.load.image('alien', 'alien.png');
+    }
+
     create() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
         // Loading text
-        const loadingText = this.add.text(400, 280, 'LOADING...', {
+        const loadingText = this.add.text(W / 2, H / 2, 'LOADING...', {
             fontFamily: '"Courier New", monospace',
-            fontSize: '20px',
+            fontSize: '32px',
             color: '#44aaff',
         }).setOrigin(0.5);
 

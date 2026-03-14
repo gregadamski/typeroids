@@ -6,6 +6,7 @@ import { Cannon } from '../entities/Cannon.js';
 import { Alien } from '../entities/Alien.js';
 import { Missile } from '../entities/Missile.js';
 import { pickAlienWord } from '../utils/wordGenerator.js';
+import { t, drillName } from '../utils/i18n.js';
 
 /**
  * Core gameplay scene.
@@ -21,6 +22,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
         // ─── State ───
         this._currentAlien = null;
         this.lives = 3;
@@ -45,7 +49,7 @@ export class GameScene extends Phaser.Scene {
         createStarfield(this);
 
         // ─── Cannon ───
-        this.cannon = new Cannon(this, 400, 580);
+        this.cannon = new Cannon(this, W / 2, H - 40);
 
         // ─── HUD ───
         this._createHUD();
@@ -69,48 +73,53 @@ export class GameScene extends Phaser.Scene {
     // ─── HUD ───────────────────────────────────────────────────────
 
     _createHUD() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
         // Score
-        this.scoreText = this.add.text(16, 12, 'SCORE: 0', {
+        this.scoreText = this.add.text(24, 16, t('hud.score') + ': 0', {
             fontFamily: '"Press Start 2P", "Courier New", monospace',
-            fontSize: '14px',
+            fontSize: '22px',
             color: '#ffffff',
         }).setDepth(50);
 
         // Combo
-        this.comboText = this.add.text(16, 34, '', {
+        this.comboText = this.add.text(24, 48, '', {
             fontFamily: '"Press Start 2P", "Courier New", monospace',
-            fontSize: '11px',
+            fontSize: '16px',
             color: '#ffdd44',
         }).setDepth(50);
 
         // Drill name
-        this.add.text(400, 12, this.drill.name, {
+        this.add.text(W / 2, 16, drillName(this.drill.id), {
             fontFamily: '"Courier New", monospace',
-            fontSize: '12px',
+            fontSize: '18px',
             color: '#667788',
         }).setOrigin(0.5, 0).setDepth(50);
 
         // Lives
         this.heartIcons = [];
         for (let i = 0; i < 3; i++) {
-            const heart = this.add.image(760 - i * 30, 20, 'heart')
-                .setScale(0.9)
+            const heart = this.add.image(W - 40 - i * 50, 28, 'heart')
+                .setScale(1.2)
                 .setDepth(50);
             this.heartIcons.push(heart);
         }
 
         // Progress bar background
-        this.add.rectangle(400, 590, 780, 6, 0x111133, 0.5).setDepth(50);
-        this.progressBar = this.add.rectangle(10, 590, 0, 4, 0x44aaff, 0.8)
+        this.add.rectangle(W / 2, H - 10, W - 20, 8, 0x111133, 0.5).setDepth(50);
+        this.progressBar = this.add.rectangle(10, H - 10, 0, 6, 0x44aaff, 0.8)
             .setOrigin(0, 0.5)
             .setDepth(50);
     }
 
     _updateHUD() {
-        this.scoreText.setText('SCORE: ' + this.score);
+        const W = this.scale.width;
+
+        this.scoreText.setText(t('hud.score') + ': ' + this.score);
 
         if (this._comboCount >= 2) {
-            this.comboText.setText('COMBO x' + this._comboMultiplier);
+            this.comboText.setText(t('hud.combo') + ' x' + this._comboMultiplier);
             this.comboText.setVisible(true);
         } else {
             this.comboText.setVisible(false);
@@ -118,23 +127,26 @@ export class GameScene extends Phaser.Scene {
 
         // Progress bar
         const progress = this._aliensSpawned / this.drill.alienCount;
-        this.progressBar.width = 780 * progress;
+        this.progressBar.width = (W - 20) * progress;
     }
 
     // ─── Pause ─────────────────────────────────────────────────────
 
     _createPauseOverlay() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
         this.pauseOverlay = this.add.container(0, 0).setDepth(100).setVisible(false);
 
-        const bg = this.add.rectangle(400, 300, 800, 600, 0x000000, 0.7);
-        const text = this.add.text(400, 280, 'PAUSED', {
+        const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7);
+        const text = this.add.text(W / 2, H / 2 - 30, t('pause.title'), {
             fontFamily: '"Press Start 2P", "Courier New", monospace',
-            fontSize: '36px',
+            fontSize: '52px',
             color: '#44aaff',
         }).setOrigin(0.5);
-        const hint = this.add.text(400, 330, 'Press ESC to resume', {
+        const hint = this.add.text(W / 2, H / 2 + 30, t('pause.hint'), {
             fontFamily: '"Courier New", monospace',
-            fontSize: '14px',
+            fontSize: '20px',
             color: '#667788',
         }).setOrigin(0.5);
 
@@ -166,8 +178,10 @@ export class GameScene extends Phaser.Scene {
     _spawnAlien() {
         if (this._drillComplete) return;
 
+        const W = this.scale.width;
+
         const word = pickAlienWord(this.drill, this._wordChance, this._wordMinLength, this._wordMaxLength);
-        const x = Phaser.Math.Between(80, 720);
+        const x = Phaser.Math.Between(80, W - 80);
         const y = -30;
 
         // Speed ramp from difficulty config
@@ -367,6 +381,8 @@ export class GameScene extends Phaser.Scene {
     update(time, delta) {
         if (this._paused) return;
 
+        const H = this.scale.height;
+
         updateStarfield(this, delta);
 
         // Track missile toward alien
@@ -378,7 +394,7 @@ export class GameScene extends Phaser.Scene {
         if (this._currentAlien && this._currentAlien.alive) {
             this._currentAlien.update(time, delta);
 
-            if (this._currentAlien.y > 620) {
+            if (this._currentAlien.y > H + 20) {
                 this._onAlienEscaped(this._currentAlien);
             }
         }

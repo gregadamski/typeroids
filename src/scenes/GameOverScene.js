@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { createStarfield, updateStarfield } from '../utils/starfield.js';
+import { t, drillName } from '../utils/i18n.js';
 
 /**
  * Game Over / Results scene.
@@ -17,32 +18,35 @@ export class GameOverScene extends Phaser.Scene {
     }
 
     create() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
         createStarfield(this);
 
         // ─── Header ───
-        const headerText = this.completed ? 'DRILL COMPLETE!' : 'GAME OVER';
+        const headerText = this.completed ? t('gameover.complete') : t('gameover.over');
         const headerColor = this.completed ? '#44ff88' : '#ff4444';
 
-        this.add.text(400, 50, headerText, {
+        this.add.text(W / 2, H * 0.06, headerText, {
             fontFamily: '"Press Start 2P", "Courier New", monospace',
-            fontSize: '30px',
+            fontSize: '44px',
             color: headerColor,
             stroke: '#000000',
-            strokeThickness: 4,
+            strokeThickness: 5,
         }).setOrigin(0.5);
 
-        this.add.text(400, 90, this.drill.name, {
+        this.add.text(W / 2, H * 0.12, drillName(this.drill.id), {
             fontFamily: '"Courier New", monospace',
-            fontSize: '14px',
+            fontSize: '20px',
             color: '#8899aa',
         }).setOrigin(0.5);
 
         // ─── Star Rating ───
-        const starY = 130;
+        const starY = H * 0.18;
         for (let i = 0; i < 3; i++) {
             const tex = i < this.stats.stars ? 'star' : 'star-empty';
-            const star = this.add.image(355 + i * 45, starY, tex)
-                .setScale(1.8)
+            const star = this.add.image(W / 2 - 45 + i * 45, starY, tex)
+                .setScale(2.2)
                 .setDepth(10);
 
             if (i < this.stats.stars) {
@@ -50,7 +54,7 @@ export class GameOverScene extends Phaser.Scene {
                 star.setScale(0);
                 this.tweens.add({
                     targets: star,
-                    scale: 1.8,
+                    scale: 2.2,
                     duration: 400,
                     delay: 200 + i * 200,
                     ease: 'Back.easeOut',
@@ -59,15 +63,15 @@ export class GameOverScene extends Phaser.Scene {
         }
 
         // ─── Score ───
-        this.add.text(400, 190, 'SCORE', {
+        this.add.text(W / 2, H * 0.26, t('gameover.score'), {
             fontFamily: '"Press Start 2P", "Courier New", monospace',
-            fontSize: '11px',
+            fontSize: '16px',
             color: '#667788',
         }).setOrigin(0.5);
 
-        const scoreDisplay = this.add.text(400, 220, '0', {
+        const scoreDisplay = this.add.text(W / 2, H * 0.31, '0', {
             fontFamily: '"Press Start 2P", "Courier New", monospace',
-            fontSize: '28px',
+            fontSize: '42px',
             color: '#ffdd44',
         }).setOrigin(0.5);
 
@@ -83,37 +87,37 @@ export class GameOverScene extends Phaser.Scene {
         });
 
         // ─── Stats Grid ───
-        const statsStartY = 280;
+        const statsStartY = H * 0.42;
         const statsData = [
-            { label: 'Accuracy', value: this.stats.accuracy + '%', color: this._getAccuracyColor() },
-            { label: 'WPM', value: this.stats.wpm.toString(), color: '#88ccff' },
-            { label: 'Aliens Hit', value: this.stats.hits + ' / ' + this.stats.totalAliens, color: '#44ff88' },
-            { label: 'Missed Keys', value: this.stats.misses.toString(), color: this.stats.misses > 0 ? '#ff8844' : '#44ff88' },
-            { label: 'Escaped', value: this.stats.escaped.toString(), color: this.stats.escaped > 0 ? '#ff4444' : '#44ff88' },
-            { label: 'Time', value: this.stats.elapsed + 's', color: '#aabbcc' },
+            { label: t('gameover.accuracy'), value: this.stats.accuracy + '%', color: this._getAccuracyColor() },
+            { label: t('gameover.wpm'), value: this.stats.wpm.toString(), color: '#88ccff' },
+            { label: t('gameover.aliensHit'), value: this.stats.hits + ' / ' + this.stats.totalAliens, color: '#44ff88' },
+            { label: t('gameover.missedKeys'), value: this.stats.misses.toString(), color: this.stats.misses > 0 ? '#ff8844' : '#44ff88' },
+            { label: t('gameover.escaped'), value: this.stats.escaped.toString(), color: this.stats.escaped > 0 ? '#ff4444' : '#44ff88' },
+            { label: t('gameover.time'), value: this.stats.elapsed + 's', color: '#aabbcc' },
         ];
 
         statsData.forEach((stat, i) => {
             const row = i % 2;
             const col = Math.floor(i / 2);
-            const x = 200 + col * 200;
-            const y = statsStartY + row * 50;
+            const x = W / 2 - 200 + col * 200;
+            const y = statsStartY + row * 70;
 
             this.add.text(x, y, stat.label, {
                 fontFamily: '"Courier New", monospace',
-                fontSize: '12px',
+                fontSize: '18px',
                 color: '#667788',
             }).setOrigin(0.5);
 
-            this.add.text(x, y + 20, stat.value, {
+            this.add.text(x, y + 28, stat.value, {
                 fontFamily: '"Press Start 2P", "Courier New", monospace',
-                fontSize: '14px',
+                fontSize: '20px',
                 color: stat.color,
             }).setOrigin(0.5);
         });
 
         // ─── Buttons ───
-        this._createButton(300, 440, 'PLAY AGAIN', () => {
+        this._createButton(W / 2 - 120, H * 0.72, t('gameover.playAgain'), () => {
             this.cameras.main.fade(300, 0, 0, 0, false, (cam, progress) => {
                 if (progress >= 1) {
                     this.scene.start('GameScene', { drill: this.drill });
@@ -121,7 +125,7 @@ export class GameOverScene extends Phaser.Scene {
             });
         });
 
-        this._createButton(500, 440, 'MENU', () => {
+        this._createButton(W / 2 + 120, H * 0.72, t('gameover.menu'), () => {
             this.cameras.main.fade(300, 0, 0, 0, false, (cam, progress) => {
                 if (progress >= 1) {
                     this.scene.start('MenuScene');
@@ -140,13 +144,13 @@ export class GameOverScene extends Phaser.Scene {
     }
 
     _createButton(x, y, label, onClick) {
-        const bg = this.add.rectangle(x, y, 160, 40, 0x1a3366, 0.9)
+        const bg = this.add.rectangle(x, y, 200, 50, 0x1a3366, 0.9)
             .setStrokeStyle(2, 0x44aaff)
             .setInteractive({ useHandCursor: true });
 
         const text = this.add.text(x, y, label, {
             fontFamily: '"Press Start 2P", "Courier New", monospace',
-            fontSize: '11px',
+            fontSize: '14px',
             color: '#88ccff',
         }).setOrigin(0.5);
 

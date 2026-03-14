@@ -1,10 +1,13 @@
 /**
  * Word generator for Typeroids.
  * Provides words filtered to only use letters in a drill's key set.
+ * Supports English and Polish word banks.
  */
 
+import { getLanguage, LANGUAGES } from './i18n.js';
+
 /** Curated bank of common short English words. */
-const WORD_BANK = [
+const WORD_BANK_EN = [
     // 2-letter
     'ad', 'ah', 'am', 'an', 'as', 'at', 'ax', 'be', 'by', 'do',
     'go', 'ha', 'he', 'hi', 'if', 'in', 'is', 'it', 'la', 'lo',
@@ -137,20 +140,112 @@ const WORD_BANK = [
 ];
 
 /**
+ * Curated bank of common short Polish words (no diacritics – a-z only).
+ * This keeps them compatible with the standard keyboard key sets.
+ */
+const WORD_BANK_PL = [
+    // 2-letter
+    'bo', 'by', 'co', 'do', 'go', 'ja', 'je', 'ku', 'ma', 'mi',
+    'na', 'ni', 'no', 'nu', 'od', 'on', 'po', 'se', 'ta', 'te',
+    'to', 'tu', 'ty', 'we', 'za',
+    // 3-letter
+    'ale', 'ani', 'bok', 'but', 'cel', 'dam', 'dar', 'den', 'dom',
+    'dno', 'dwa', 'dwu', 'elf', 'era', 'fal', 'fan', 'far', 'fat',
+    'fil', 'fok', 'gar', 'gen', 'gol', 'gra', 'grb', 'gut', 'hen',
+    'hit', 'hop', 'huk', 'ile', 'jak', 'jar', 'jod', 'kam', 'kat',
+    'kit', 'kij', 'koc', 'kod', 'kok', 'kon', 'kos', 'kot', 'kra',
+    'kto', 'kum', 'kur', 'las', 'led', 'lek', 'les', 'lew', 'lis',
+    'los', 'lot', 'lud', 'luk', 'lut', 'mat', 'med', 'men', 'mer',
+    'mit', 'moc', 'mor', 'mur', 'mus', 'mur', 'myk', 'nam', 'nas',
+    'nit', 'nos', 'noc', 'nos', 'noz', 'nud', 'nut', 'oko', 'pal',
+    'pan', 'par', 'pas', 'pat', 'pes', 'pic', 'pik', 'pin', 'pod',
+    'pol', 'pot', 'pro', 'psa', 'pud', 'puk', 'rad', 'raj', 'rak',
+    'ram', 'ran', 'rap', 'raz', 'rog', 'rok', 'ros', 'row', 'rud',
+    'rum', 'rys', 'sad', 'sal', 'sam', 'ser', 'set', 'sit', 'ski',
+    'sol', 'som', 'son', 'sos', 'sow', 'sok', 'sum', 'sun', 'sur',
+    'syn', 'tak', 'tam', 'tan', 'tor', 'ton', 'top', 'tuk', 'tur',
+    'tuz', 'typ', 'wam', 'war', 'was', 'wek', 'wer', 'wir', 'wit',
+    'wok', 'wol', 'wor', 'wuj', 'wyk', 'zad', 'zan', 'zar', 'zip',
+    // 4-letter
+    'auto', 'baba', 'bank', 'bark', 'bieg', 'blok', 'brat', 'bruk',
+    'bunt', 'burk', 'cela', 'cena', 'cham', 'chat', 'cios', 'cudo',
+    'dach', 'dane', 'deska','diak', 'dola', 'drab', 'druk', 'duma',
+    'echo', 'efek', 'etap', 'fakt', 'fala', 'farm', 'film', 'foka',
+    'fort', 'gama', 'glob', 'gnom', 'golf', 'gong', 'grad', 'gram',
+    'grom', 'grub', 'gust', 'haft', 'hala', 'helm', 'herb', 'gest',
+    'hurt', 'igla', 'ilom', 'jard', 'jajo', 'jutk', 'kara', 'karp',
+    'kask', 'klan', 'klej', 'klif', 'klub', 'klur', 'koks', 'kora',
+    'kord', 'krem', 'kres', 'kret', 'krok', 'krol', 'kron', 'krup',
+    'kura', 'kurs', 'kula', 'kwas', 'lada', 'lama', 'lamp', 'lato',
+    'lawa', 'liga', 'lipa', 'list', 'loch', 'lont', 'lord', 'lufa',
+    'mapa', 'marg', 'masz', 'mech', 'mewa', 'mild', 'mina', 'misa',
+    'most', 'mops', 'mrok', 'mula', 'nard', 'noga', 'nota', 'nora',
+    'nurt', 'obca', 'okno', 'okop', 'olin', 'opis', 'orka', 'oset',
+    'owca', 'pakt', 'park', 'plan', 'plac', 'plot', 'plus', 'plon',
+    'port', 'post', 'prof', 'prom', 'prut', 'ptak', 'rafa', 'rana',
+    'ring', 'rola', 'rosa', 'ruch', 'rudo', 'rura', 'ryba', 'skok',
+    'slab', 'smak', 'snop', 'spis', 'staw', 'stop', 'stuk', 'takt',
+    'tank', 'targ', 'test', 'tlen', 'tolt', 'torf', 'tram', 'trop',
+    'trut', 'trup', 'udar', 'ulga', 'umor', 'upal', 'usta', 'wasp',
+    'waga', 'wart', 'wata', 'wilk', 'wina', 'witr', 'wolt', 'woda',
+    'wrak', 'wzor', 'zamk', 'znak', 'zwod',
+    // 5-letter
+    'adres', 'alarm', 'atlas', 'balon', 'barka', 'bilet', 'blask',
+    'broda', 'brzeg', 'budka', 'domek', 'droga', 'drzwi', 'farad',
+    'farba', 'forma', 'front', 'garsc', 'gleba', 'gniew', 'grosz',
+    'grupo', 'haslo', 'hotel', 'iskra', 'kabel', 'karta', 'klasa',
+    'klips', 'kolor', 'komin', 'konik', 'koper', 'kresk', 'krokw',
+    'krzew', 'latka', 'linia', 'maska', 'medal', 'melon', 'metal',
+    'mleko', 'model', 'motor', 'motyl', 'mulat', 'narod', 'numer',
+    'obiad', 'obraz', 'oliwa', 'opona', 'osoba', 'pagod', 'panel',
+    'patyk', 'peron', 'pilot', 'pirat', 'plama', 'podla', 'pokrm',
+    'polar', 'prasa', 'promt', 'punkt', 'radio', 'ranek', 'regal',
+    'robot', 'salon', 'serce', 'skala', 'skarb', 'sport', 'stawy',
+    'stres', 'super', 'tabor', 'temat', 'trawa', 'twarz', 'uklad',
+    'wagon', 'wirus', 'wisla', 'wpust', 'wulka', 'wynik', 'zamek',
+    'zimno', 'zloto', 'zmrok',
+];
+
+/** Map language codes to their word banks. */
+const WORD_BANKS = {
+    en: WORD_BANK_EN,
+    pl: WORD_BANK_PL,
+};
+
+/** Minimum number of candidate words required before augmenting with English. */
+const MIN_CANDIDATES = 2;
+
+/**
  * Return a random word from the bank whose letters are all contained in `keys`.
+ * When the selected language yields fewer than MIN_CANDIDATES words, English
+ * words are added to the pool so every drill has enough variety.
  * @param {string[]} keys - Allowed characters for this drill
  * @param {number} minLen - Minimum word length (inclusive)
  * @param {number} maxLen - Maximum word length (inclusive)
+ * @param {string} [language] - Language code ('en' or 'pl'); defaults to current i18n setting
  * @returns {string|null} A matching word, or null if none found
  */
-export function getWordForKeys(keys, minLen = 2, maxLen = 5) {
+export function getWordForKeys(keys, minLen = 2, maxLen = 5, language) {
+    const lang = language || getLanguage();
+    const bank = WORD_BANKS[lang] || WORD_BANKS.en;
     const keySet = new Set(keys.map(k => k.toLowerCase()));
 
-    const candidates = WORD_BANK.filter(w =>
+    const filterFn = w =>
         w.length >= minLen &&
         w.length <= maxLen &&
-        [...w].every(ch => keySet.has(ch))
-    );
+        [...w].every(ch => keySet.has(ch));
+
+    let candidates = bank.filter(filterFn);
+
+    // If the chosen language has too few matches, augment with English words
+    if (candidates.length < MIN_CANDIDATES && lang !== LANGUAGES.EN) {
+        const enExtras = WORD_BANKS.en.filter(filterFn);
+        // Merge without duplicates
+        const existing = new Set(candidates);
+        for (const w of enExtras) {
+            if (!existing.has(w)) candidates.push(w);
+        }
+    }
 
     if (candidates.length === 0) return null;
     return candidates[Math.floor(Math.random() * candidates.length)];
@@ -182,7 +277,7 @@ export function pickAlienWord(drill, wordChance = 0.6, minLen = 2, maxLen = 5) {
     const keys = drill.keys;
 
     if (Math.random() < wordChance) {
-        // Try dictionary word first
+        // Try dictionary word first (uses current language automatically)
         const word = getWordForKeys(keys, minLen, maxLen);
         if (word) return word;
 

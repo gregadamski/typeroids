@@ -8,11 +8,12 @@ export class Cannon extends Phaser.GameObjects.Container {
         super(scene, x, y);
         scene.add.existing(this);
 
-        this.sprite = scene.add.image(0, 0, 'cannon').setOrigin(0.5, 1);
+        this.sprite = scene.add.image(0, 0, 'cannon').setOrigin(0.5, 0.8);
+        this.sprite.setScale(0.19); // high res scale down
         this.add(this.sprite);
 
         // Muzzle flash
-        this.flash = scene.add.circle(0, -48, 6, 0xffff88, 0)
+        this.flash = scene.add.circle(0, -110, 10, 0xffff88, 0)
             .setBlendMode(Phaser.BlendModes.ADD);
         this.add(this.flash);
 

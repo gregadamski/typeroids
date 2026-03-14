@@ -4,15 +4,23 @@ import { MenuScene } from './scenes/MenuScene.js';
 import { GameScene } from './scenes/GameScene.js';
 import { GameOverScene } from './scenes/GameOverScene.js';
 
+const dpr = window.devicePixelRatio || 1;
+
 const config = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: 1920,
+  height: 1080,
   parent: 'game-container',
-  backgroundColor: '#0a0a1a',
+  backgroundColor: '#e3e3f6ff',
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    zoom: dpr,
+  },
+  render: {
+    antialias: true,
+    pixelArt: false,
+    roundPixels: true,
   },
   scene: [BootScene, MenuScene, GameScene, GameOverScene],
 };

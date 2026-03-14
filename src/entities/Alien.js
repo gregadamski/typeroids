@@ -27,8 +27,9 @@ export class Alien extends Phaser.GameObjects.Container {
 
         // Alien sprite – scale wider for longer words
         this.sprite = scene.add.image(0, 0, 'alien').setOrigin(0.5);
+        this.baseScale = 0.19;
         const widthScale = Math.max(1, 0.6 + word.length * 0.35);
-        this.sprite.setScale(widthScale, 1);
+        this.sprite.setScale(widthScale * this.baseScale, this.baseScale);
         this.add(this.sprite);
 
         // Per-character text objects for highlight control
@@ -58,8 +59,8 @@ export class Alien extends Phaser.GameObjects.Container {
         // Glow pulse
         scene.tweens.add({
             targets: this.sprite,
-            scaleX: widthScale * 1.08,
-            scaleY: 1.08,
+            scaleX: widthScale * this.baseScale * 1.08,
+            scaleY: this.baseScale * 1.08,
             duration: 600,
             yoyo: true,
             repeat: -1,

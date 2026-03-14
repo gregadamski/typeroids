@@ -4,49 +4,49 @@ import Phaser from 'phaser';
  * Generate all game textures procedurally so we need zero external asset files.
  */
 export function generateTextures(scene) {
-    // ─── Cannon ───
+    // ─── Cannon (fallback – overridden by spaceship.png when available) ───
     if (!scene.textures.exists('cannon')) {
         const cg = scene.make.graphics({ add: false });
         // Barrel
         cg.fillStyle(0x44aaff, 1);
-        cg.fillRect(18, 0, 12, 28);
+        cg.fillRect(36, 0, 24, 56);
         // Barrel highlight
         cg.fillStyle(0x77ccff, 1);
-        cg.fillRect(22, 0, 4, 28);
+        cg.fillRect(44, 0, 8, 56);
         // Body
         cg.fillStyle(0x3388dd, 1);
-        cg.fillRoundedRect(4, 24, 40, 24, 6);
+        cg.fillRoundedRect(8, 48, 80, 48, 12);
         // Body highlight
         cg.fillStyle(0x55aaee, 1);
-        cg.fillRoundedRect(10, 27, 28, 8, 4);
+        cg.fillRoundedRect(20, 54, 56, 16, 8);
         // Base
         cg.fillStyle(0x2266aa, 1);
-        cg.fillRoundedRect(0, 40, 48, 12, 4);
-        cg.generateTexture('cannon', 48, 52);
+        cg.fillRoundedRect(0, 80, 96, 24, 8);
+        cg.generateTexture('cannon', 96, 104);
         cg.destroy();
     }
 
-    // ─── Alien ───
+    // ─── Alien (fallback – overridden by alien.png when available) ───
     if (!scene.textures.exists('alien')) {
         const ag = scene.make.graphics({ add: false });
         // Glow
         ag.fillStyle(0x00ff88, 0.15);
-        ag.fillCircle(24, 24, 24);
+        ag.fillCircle(48, 48, 48);
         // Body
         ag.fillStyle(0x22cc66, 1);
-        ag.fillCircle(24, 24, 18);
+        ag.fillCircle(48, 48, 36);
         // Inner shine
         ag.fillStyle(0x44ee88, 0.6);
-        ag.fillCircle(20, 18, 8);
+        ag.fillCircle(40, 36, 16);
         // Eyes
         ag.fillStyle(0x000000, 1);
-        ag.fillCircle(18, 22, 3);
-        ag.fillCircle(30, 22, 3);
+        ag.fillCircle(36, 44, 6);
+        ag.fillCircle(60, 44, 6);
         // Eye shine
         ag.fillStyle(0xffffff, 1);
-        ag.fillCircle(19, 21, 1.2);
-        ag.fillCircle(31, 21, 1.2);
-        ag.generateTexture('alien', 48, 48);
+        ag.fillCircle(38, 42, 2.4);
+        ag.fillCircle(62, 42, 2.4);
+        ag.generateTexture('alien', 96, 96);
         ag.destroy();
     }
 
@@ -54,12 +54,12 @@ export function generateTextures(scene) {
     if (!scene.textures.exists('missile')) {
         const mg = scene.make.graphics({ add: false });
         mg.fillStyle(0xffdd44, 1);
-        mg.fillRect(2, 0, 4, 14);
+        mg.fillRect(4, 0, 8, 28);
         mg.fillStyle(0xff8800, 1);
-        mg.fillTriangle(4, 14, 0, 10, 8, 10);
+        mg.fillTriangle(8, 28, 0, 20, 16, 20);
         mg.fillStyle(0xffff88, 1);
-        mg.fillRect(3, 1, 2, 6);
-        mg.generateTexture('missile', 8, 14);
+        mg.fillRect(6, 2, 4, 12);
+        mg.generateTexture('missile', 16, 28);
         mg.destroy();
     }
 
@@ -67,8 +67,8 @@ export function generateTextures(scene) {
     if (!scene.textures.exists('particle')) {
         const pg = scene.make.graphics({ add: false });
         pg.fillStyle(0xffffff, 1);
-        pg.fillCircle(4, 4, 4);
-        pg.generateTexture('particle', 8, 8);
+        pg.fillCircle(8, 8, 8);
+        pg.generateTexture('particle', 16, 16);
         pg.destroy();
     }
 
@@ -76,33 +76,17 @@ export function generateTextures(scene) {
     if (!scene.textures.exists('heart')) {
         const hg = scene.make.graphics({ add: false });
         hg.fillStyle(0xff3366, 1);
-        hg.fillCircle(8, 7, 6);
-        hg.fillCircle(18, 7, 6);
-        hg.fillTriangle(2, 10, 24, 10, 13, 22);
-        hg.generateTexture('heart', 26, 24);
+        hg.fillCircle(16, 14, 12);
+        hg.fillCircle(36, 14, 12);
+        hg.fillTriangle(4, 20, 48, 20, 26, 44);
+        hg.generateTexture('heart', 52, 48);
         hg.destroy();
     }
 
     // ─── Star (for ratings) ───
     if (!scene.textures.exists('star')) {
         const sg = scene.make.graphics({ add: false });
-        sg.fillStyle(0xffcc00, 1);
-        // Simple 5-pointed star
-        const cx = 12, cy = 12, outerR = 12, innerR = 5;
-        const points = [];
-        for (let i = 0; i < 10; i++) {
-            const r = i % 2 === 0 ? outerR : innerR;
-            const angle = (Math.PI / 2) + (i * Math.PI / 5);
-            points.push(cx - Math.cos(angle) * r);
-            points.push(cy - Math.sin(angle) * r);
-        }
-        sg.fillPoints(points.map((v, i) => {
-            return i % 2 === 0
-                ? new Phaser.Geom.Point(points[i], points[i + 1])
-                : null;
-        }).filter(Boolean));
-        // Simpler approach: just draw a filled polygon
-        sg.clear();
+        const cx = 24, cy = 24, outerR = 24, innerR = 10;
         sg.fillStyle(0xffcc00, 1);
         sg.beginPath();
         for (let i = 0; i < 10; i++) {
@@ -115,15 +99,15 @@ export function generateTextures(scene) {
         }
         sg.closePath();
         sg.fillPath();
-        sg.generateTexture('star', 24, 24);
+        sg.generateTexture('star', 48, 48);
         sg.destroy();
     }
 
     // ─── Empty star ───
     if (!scene.textures.exists('star-empty')) {
         const sg2 = scene.make.graphics({ add: false });
-        const cx = 12, cy = 12, outerR = 12, innerR = 5;
-        sg2.lineStyle(2, 0x666666, 1);
+        const cx = 24, cy = 24, outerR = 24, innerR = 10;
+        sg2.lineStyle(3, 0x666666, 1);
         sg2.beginPath();
         for (let i = 0; i < 10; i++) {
             const r = i % 2 === 0 ? outerR : innerR;
@@ -135,7 +119,7 @@ export function generateTextures(scene) {
         }
         sg2.closePath();
         sg2.strokePath();
-        sg2.generateTexture('star-empty', 24, 24);
+        sg2.generateTexture('star-empty', 48, 48);
         sg2.destroy();
     }
 }
